@@ -73,7 +73,7 @@ To make the Open Targets MCP server available to AI clients that support the Mod
 
 **Notes:**
 
-- Replace the path (/Users/carlos_cruz/projects/ot/ts-mcp/src/main.ts) with the appropriate path to the entry file on your system.
+- Replace the path (~/ot-mcp-proto/src/main.ts) with the appropriate path to the entry file on your system.
 - This configuration assumes you have tsx and other project dependencies installed locally.
 - If you’re running the MCP server in a different environment (e.g. Docker, remote host), adjust the command and args accordingly.
 
