@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -60,7 +61,6 @@ mcpServer.tool(
     BFilter: z
       .string()
       .default("")
-      .optional()
       .describe("Filter to apply to the IDs with string prefixes"),
   },
   async ({
@@ -106,13 +106,9 @@ mcpServer.tool(
       // Create a summary
       const summary = {
         target: {
-          // @ts-ignore
           id: response.target.id,
-          // @ts-ignore
           symbol: response.target.approvedSymbol,
-          // @ts-ignore
           name: response.target.approvedName,
-          // @ts-ignore
           biotype: response.target.biotype,
         },
         diseaseAssociations: {
@@ -166,152 +162,6 @@ mcpServer.tool(
       console.error("Target associated diseases error:", error);
       throw new Error(
         `Failed to fetch associated diseases for target ${targetId}: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    }
-  }
-);
-
-// Register the disease evidence tool
-mcpServer.tool(
-  "disease_evidence",
-  {
-    diseaseId: z
-      .string()
-      .describe("EFO disease ID (e.g., EFO_0000253)")
-      .default("EFO_0006335"),
-    ensemblId: z
-      .string()
-      .describe("Ensembl gene ID (e.g., ENSG00000157764)")
-      .default("ENSG00000091157"),
-    datasourceIds: z
-      .array(z.string())
-      .optional()
-      .describe(
-        "Filter by evidence data sources (e.g., gwas_credible_sets, chembl, cancer_biomarkers)"
-      )
-      .default(["gwas_credible_sets"]),
-    enableIndirect: z
-      .boolean()
-      .default(true)
-      .describe(
-        "Utilize target interactions to retrieve all associated diseases"
-      ),
-    size: z.number().default(10).describe("Number of results per page"),
-  },
-  async ({ diseaseId, ensemblId, datasourceIds, enableIndirect, size }) => {
-    try {
-      // Prepare variables for GraphQL query
-      const variables: Record<string, any> = {
-        diseaseId,
-        ensemblId,
-        datasourceIds,
-        enableIndirect,
-        size,
-      };
-
-      // Remove undefined values
-      Object.keys(variables).forEach((key) => {
-        if (variables[key] === undefined) {
-          delete variables[key];
-        }
-      });
-
-      const response = await graphqlClient.request(
-        queries.diseaseEvidence,
-        variables
-      );
-
-      // Format the response
-      // @ts-ignore
-      const disease = response.disease;
-      const evidences = disease.evidences;
-
-      // Create a summary
-      const summary = {
-        disease: {
-          id: disease.id,
-          name: disease.name,
-        },
-        evidence: {
-          count: evidences.count,
-          returned: evidences.rows.length,
-        },
-      };
-
-      // Process the evidence rows to make them more readable
-      const formattedEvidences = evidences.rows.map((evidence) => {
-        const formattedEvidence = {
-          id: evidence.id,
-          score: evidence.score,
-          dataType: evidence.dataType,
-          datasource: evidence.datasourceId,
-          target: {
-            id: evidence.target.id,
-            symbol: evidence.target.approvedSymbol,
-            name: evidence.target.approvedName,
-          },
-          disease: {
-            id: evidence.disease.id,
-            name: evidence.disease.name,
-          },
-          source: evidence.source
-            ? {
-                name: evidence.source.name,
-                url: evidence.source.url,
-              }
-            : null,
-        };
-
-        // Add literature information if available
-        if (evidence.literature && evidence.literature.pubmedId) {
-          formattedEvidence["literature"] = {
-            pubmedId: evidence.literature.pubmedId,
-            title: evidence.literature.title,
-          };
-        }
-
-        // Add text mining sentences if available
-        if (
-          evidence.textMiningSentences &&
-          evidence.textMiningSentences.length > 0
-        ) {
-          formattedEvidence["textMining"] = evidence.textMiningSentences.map(
-            (sentence) => ({
-              text: sentence.text,
-              matchedTerms: sentence.matchingObjs
-                ? sentence.matchingObjs.map((obj) => ({
-                    type: obj.type,
-                    term: obj.term,
-                  }))
-                : [],
-            })
-          );
-        }
-
-        return formattedEvidence;
-      });
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                summary,
-                evidences: formattedEvidences,
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
-    } catch (error) {
-      console.error("Disease evidence error:", error);
-      throw new Error(
-        `Failed to fetch evidence for disease ${diseaseId}: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
